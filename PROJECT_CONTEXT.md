@@ -1,6 +1,6 @@
 # Inventory MCP Server — Project Context (for Claude)
 
-_Snapshot: 2026-10-29 · **v0 ship** — M1–M4 done; public GitHub repo **allowed and in progress** (`shopify-inventory-mcp`) · owner override lifted “no repo yet” lock · npm registry publish still not required for v0 · priority: ship then measure gate._
+_Snapshot: 2026-10-29 · **v0 shipped** — M1–M4 done; public repo https://github.com/arsalan-arshad/shopify-inventory-mcp · npm registry not required for v0 · next: live E2E + measure gate (ask before directory listing)._
 _Contains NO secrets. Never paste `.env` values or tokens into chat or docs._
 
 ## 1. What this is
