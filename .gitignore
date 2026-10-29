@@ -1,0 +1,38 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependencies & build output
+node_modules/
+build/
+dist/
+coverage/
+.cache/
+*.tsbuildinfo
+
+# Shopify CLI local state
+.shopify/
+.shopifyapp/
+
+# Local databases
+*.sqlite
+*.sqlite-journal
+*.sqlite3
+
+# Environment files / secrets
+.env
+.env.*
+!.env.example
+*.pem
+
+# Editor / OS / local tooling
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.claude/settings.local.json
+*.swp
+*~

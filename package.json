@@ -1,0 +1,52 @@
+{
+  "name": "shopify-inventory-mcp",
+  "version": "0.1.0",
+  "description": "Local MCP server: deterministic inventory forecasting tools (days of cover, stockout date, reorder point) over a Shopify store (BYOK). Not affiliated with Shopify.",
+  "license": "MIT",
+  "author": "Arsalan Arshad <arsalanarshad.dev@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arsalan-arshad/shopify-inventory-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/arsalan-arshad/shopify-inventory-mcp/issues"
+  },
+  "homepage": "https://github.com/arsalan-arshad/shopify-inventory-mcp#readme",
+  "keywords": [
+    "mcp",
+    "shopify",
+    "inventory",
+    "forecast",
+    "reorder",
+    "stdio"
+  ],
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./dist/server.js",
+  "bin": {
+    "shopify-inventory-mcp": "./dist/server.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    ".env.example"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}
