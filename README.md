@@ -1,12 +1,12 @@
 # shopify-inventory-mcp — Deterministic Inventory Forecasts for Any AI Assistant
 
-> **Open-Source (MIT)** | Local stdio MCP | Shopify Admin API (BYOK) | Not affiliated with Shopify
+> **Open-Source (MIT)** | Local stdio MCP (BYOK) · Hosted HTTP (Bearer) | Shopify Admin API | Not affiliated with Shopify
 
 [![CI](https://github.com/arsalan-arshad/shopify-inventory-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/arsalan-arshad/shopify-inventory-mcp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node >=20](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](package.json)
 
-> **Status:** v0 — deterministic forecast math + Shopify read layer + four stdio MCP tools. Bring your own store credentials. Numbers come from pure functions with fixture tests; the model only explains them.
+> **Status:** **0.2.0** — deterministic forecast math + Shopify read layer + four MCP tools over **stdio (BYOK)** or **Streamable HTTP** (Bearer API key; Railway-friendly). Hosted mode is a **single-tenant portfolio demo** (no Shopify OAuth / multi-store yet). Numbers come from pure functions with fixture tests; the model only explains them.
 
 ---
 
@@ -14,7 +14,9 @@
 
 Merchants ask AI assistants “what will I run out of?” Assistants can read inventory, but guessed reorder numbers are dangerous. This **read-only MCP server** computes weighted moving average demand, days of cover, stockout date, and reorder point from **your** Shopify data and returns structured JSON the model can explain — not invent.
 
-**Why BYOK:** you run it locally with your own credentials. The token stays on your machine; **tool results are still sent to the model provider by your MCP client**, so treat product titles/notes as leaving via that channel.
+**Why BYOK (local):** you run it locally with your own credentials. The token stays on your machine; **tool results are still sent to the model provider by your MCP client**, so treat product titles/notes as leaving via that channel.
+
+**Hosted demo:** same tools over HTTPS Streamable HTTP; Shopify creds stay on the server; clients send `Authorization: Bearer <MCP_API_KEY>`. See [`docs/HOSTED.md`](docs/HOSTED.md).
 
 Official Shopify MCP (UCP) covers storefront/cart/checkout — **not** Admin inventory forecasting. That’s the gap this fills.
 
@@ -87,9 +89,10 @@ npm install
 npm test
 npm run build
 npm start              # stdio MCP server (for clients that spawn it)
+# MCP_API_KEY=... npm run start:http   # Streamable HTTP on PORT (default 3000)
 ```
 
-Or after build: `npx shopify-inventory-mcp` (uses the `bin` entry).
+Or after build: `npx shopify-inventory-mcp` (uses the `bin` entry → stdio).
 
 ---
 
@@ -141,6 +144,23 @@ Edit Claude Desktop’s MCP config (macOS: `~/Library/Application Support/Claude
 
 Restart Cursor / Claude Desktop after saving.
 
+### Remote / hosted (Streamable HTTP)
+
+After deploying (see [`docs/HOSTED.md`](docs/HOSTED.md)), point the client at `/mcp` with a Bearer header matching Railway `MCP_API_KEY`:
+
+```json
+{
+  "mcpServers": {
+    "shopify-inventory-hosted": {
+      "url": "https://YOUR-APP.up.railway.app/mcp",
+      "headers": {
+        "Authorization": "Bearer ${env:MCP_API_KEY}"
+      }
+    }
+  }
+}
+```
+
 ---
 
 ## 7. Example prompts
@@ -172,33 +192,44 @@ CI runs the same on every push/PR to `main`. A live end-to-end check against a r
 
 ```
 src/
-  forecast/     # pure math (WMA, days of cover, reorder point) — no I/O
-  shopify/      # BYOK Admin GraphQL read layer
-  tools/        # schemas + handlers
-  server.ts     # stdio MCP entry (bin)
+  forecast/       # pure math (WMA, days of cover, reorder point) — no I/O
+  shopify/        # Admin GraphQL read layer (BYOK or server env)
+  tools/          # schemas + handlers
+  http/           # Bearer API-key middleware (hosted)
+  server.ts       # stdio MCP entry (bin)
+  http-server.ts  # Streamable HTTP MCP entry (Railway)
 ```
 
 ```mermaid
 flowchart LR
-    C["MCP client"] -->|stdio| S["MCP server"]
+    C["MCP client"] -->|stdio or Streamable HTTP| S["MCP server"]
     S --> F["Pure forecast functions"]
-    S --> A["Shopify Admin GraphQL\nBYOK read-only"]
+    S --> A["Shopify Admin GraphQL\nread-only"]
 ```
 
 ---
 
-## 10. Roadmap
+## 10. Hosted deploy (Railway)
 
-- [x] **v0:** four tools, local stdio, store-wide lead time, docs, public GitHub repo
-- [ ] **v1:** per-SKU config, CSV export, Reorder Brain tools
-- [ ] **Later:** hosted tier, directory listing, Salesforce pipeline, bulk ops / `read_all_orders`
+Portfolio / single-tenant demo — **not** multi-merchant OAuth. Full steps, env list, and security notes: **[`docs/HOSTED.md`](docs/HOSTED.md)**.
+
+Quick path: connect the GitHub repo on Railway → set `MCP_API_KEY`, `SHOPIFY_STORE_DOMAIN`, and Shopify client credentials (or static token) → deploy with included `Dockerfile` / `railway.toml` → use `https://<domain>/mcp` plus Bearer header in the client.
 
 ---
 
-## 11. Contributing & Security
+## 11. Roadmap
+
+- [x] **v0:** four tools, local stdio, store-wide lead time, docs, public GitHub repo
+- [x] **0.2.0-hosted:** Streamable HTTP + Bearer API key + Railway Dockerfile (single-tenant demo)
+- [ ] **v1:** per-SKU config, CSV export, Reorder Brain tools
+- [ ] **Later:** multi-tenant OAuth / billing, directory listing, Salesforce pipeline, bulk ops / `read_all_orders`
+
+---
+
+## 12. Contributing & Security
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`SECURITY.md`](SECURITY.md). Contact: **arsalanarshad.dev@gmail.com**.
 
-## 12. License
+## 13. License
 
 MIT — see [`LICENSE`](LICENSE). Not affiliated with Shopify Inc.
