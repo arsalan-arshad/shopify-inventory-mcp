@@ -1,7 +1,7 @@
 {
   "name": "shopify-inventory-mcp",
-  "version": "0.2.0",
-  "description": "MCP server: deterministic inventory forecasting tools (days of cover, stockout date, reorder point) over a Shopify store — local stdio BYOK or hosted HTTP with Bearer API key. Not affiliated with Shopify.",
+  "version": "0.2.1",
+  "description": "MCP server: deterministic inventory forecasting tools over a Shopify store — local stdio BYOK or hosted HTTP (gateway key + per-user Shopify headers). Not affiliated with Shopify.",
   "license": "MIT",
   "author": "Arsalan Arshad <arsalanarshad.dev@gmail.com>",
   "repository": {

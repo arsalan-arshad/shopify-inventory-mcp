@@ -21,10 +21,24 @@ export const DEFAULT_API_VERSION = "2025-10";
  * - Static token: SHOPIFY_ADMIN_ACCESS_TOKEN (existing admin-created custom apps)
  * - Client credentials: SHOPIFY_CLIENT_ID + SHOPIFY_CLIENT_SECRET (Dev Dashboard)
  */
-export function loadShopifyConfig(
-  env: NodeJS.ProcessEnv = process.env,
-): ShopifyConfig {
-  const rawDomain = (env.SHOPIFY_STORE_DOMAIN ?? "").trim();
+export type ShopifyConfigParts = {
+  storeDomain: string;
+  accessToken?: string;
+  clientId?: string;
+  clientSecret?: string;
+  apiVersion?: string;
+  leadTimeDays?: number;
+  historyDays?: number;
+  maxInventoryItems?: number;
+  maxOrderPages?: number;
+};
+
+/**
+ * Build a ShopifyConfig from explicit parts (e.g. HTTP headers).
+ * Does not read process.env for credentials.
+ */
+export function shopifyConfigFromParts(parts: ShopifyConfigParts): ShopifyConfig {
+  const rawDomain = parts.storeDomain.trim();
   if (!rawDomain) {
     throw new ShopifyError(
       "SHOPIFY_STORE_DOMAIN is required (e.g. your-store.myshopify.com)",
@@ -33,9 +47,9 @@ export function loadShopifyConfig(
   }
 
   const storeDomain = normalizeStoreDomain(rawDomain);
-  const accessToken = emptyToUndefined(env.SHOPIFY_ADMIN_ACCESS_TOKEN);
-  const clientId = emptyToUndefined(env.SHOPIFY_CLIENT_ID);
-  const clientSecret = emptyToUndefined(env.SHOPIFY_CLIENT_SECRET);
+  const accessToken = emptyToUndefined(parts.accessToken);
+  const clientId = emptyToUndefined(parts.clientId);
+  const clientSecret = emptyToUndefined(parts.clientSecret);
 
   if (!accessToken && !(clientId && clientSecret)) {
     throw new ShopifyError(
@@ -49,11 +63,29 @@ export function loadShopifyConfig(
     accessToken,
     clientId,
     clientSecret,
-    apiVersion: emptyToUndefined(env.SHOPIFY_API_VERSION) ?? DEFAULT_API_VERSION,
-    leadTimeDays: parsePositiveInt(
-      env.LEAD_TIME_DAYS,
-      DEFAULT_LEAD_TIME_DAYS,
-    ),
+    apiVersion: emptyToUndefined(parts.apiVersion) ?? DEFAULT_API_VERSION,
+    leadTimeDays: parts.leadTimeDays ?? DEFAULT_LEAD_TIME_DAYS,
+    historyDays: parts.historyDays ?? DEFAULT_HISTORY_DAYS,
+    maxInventoryItems: parts.maxInventoryItems ?? DEFAULT_MAX_INVENTORY_ITEMS,
+    maxOrderPages: parts.maxOrderPages ?? DEFAULT_MAX_ORDER_PAGES,
+  };
+}
+
+/**
+ * Load config from process.env (BYOK). Supports:
+ * - Static token: SHOPIFY_ADMIN_ACCESS_TOKEN (existing admin-created custom apps)
+ * - Client credentials: SHOPIFY_CLIENT_ID + SHOPIFY_CLIENT_SECRET (Dev Dashboard)
+ */
+export function loadShopifyConfig(
+  env: NodeJS.ProcessEnv = process.env,
+): ShopifyConfig {
+  return shopifyConfigFromParts({
+    storeDomain: env.SHOPIFY_STORE_DOMAIN ?? "",
+    accessToken: env.SHOPIFY_ADMIN_ACCESS_TOKEN,
+    clientId: env.SHOPIFY_CLIENT_ID,
+    clientSecret: env.SHOPIFY_CLIENT_SECRET,
+    apiVersion: env.SHOPIFY_API_VERSION,
+    leadTimeDays: parsePositiveInt(env.LEAD_TIME_DAYS, DEFAULT_LEAD_TIME_DAYS),
     historyDays: parsePositiveInt(env.HISTORY_DAYS, DEFAULT_HISTORY_DAYS),
     maxInventoryItems: parsePositiveInt(
       env.MAX_INVENTORY_ITEMS,
@@ -63,7 +95,7 @@ export function loadShopifyConfig(
       env.MAX_ORDER_PAGES,
       DEFAULT_MAX_ORDER_PAGES,
     ),
-  };
+  });
 }
 
 export function normalizeStoreDomain(domain: string): string {

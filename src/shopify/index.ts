@@ -13,7 +13,13 @@ export {
   DEFAULT_MAX_ORDER_PAGES,
   loadShopifyConfig,
   normalizeStoreDomain,
+  shopifyConfigFromParts,
 } from "./config.js";
+export type { ShopifyConfigParts } from "./config.js";
+export {
+  getRequestShopifyConfig,
+  runWithShopifyConfig,
+} from "./request-context.js";
 export { ShopifyError, redactSecrets } from "./errors.js";
 export { fetchInventorySkus, findInventoryBySku } from "./inventory.js";
 export { fetchDailyUsageFromOrders } from "./orders.js";

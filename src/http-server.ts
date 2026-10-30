@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Hosted MCP entry — Streamable HTTP (stateless) + Bearer API key.
- * Shopify credentials stay server-side (single-tenant portfolio demo).
+ * Users bring their own Shopify credentials via request headers (BYOK).
  * Local stdio BYOK continues via `src/server.ts` / `npm start`.
  */
 
@@ -9,9 +9,12 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
-import type { Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import { AuthConfigError, loadMcpApiKey, requireBearerApiKey } from "./http/auth.js";
+import { shopifyConfigFromHeaders } from "./http/shopify-headers.js";
 import { getPackageMeta } from "./package-meta.js";
+import { ShopifyError } from "./shopify/errors.js";
+import { runWithShopifyConfig } from "./shopify/request-context.js";
 import { createInventoryMcpServer } from "./server.js";
 
 const MCP_PATH = "/mcp";
@@ -23,6 +26,40 @@ export type HttpServerOptions = {
   /** Injected for tests; defaults to createInventoryMcpServer. */
   createServer?: typeof createInventoryMcpServer;
 };
+
+function requireShopifyHeaders(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  try {
+    const config = shopifyConfigFromHeaders({
+      get: (name) => req.header(name) ?? undefined,
+    });
+    runWithShopifyConfig(config, () => {
+      next();
+    });
+  } catch (err) {
+    if (err instanceof ShopifyError && err.code === "missing_shopify_headers") {
+      res.status(400).json({
+        error: "missing_shopify_credentials",
+        message: err.message,
+      });
+      return;
+    }
+    if (err instanceof ShopifyError) {
+      res.status(400).json({
+        error: err.code,
+        message: err.message,
+      });
+      return;
+    }
+    res.status(400).json({
+      error: "invalid_shopify_credentials",
+      message: "Could not parse Shopify credentials from headers",
+    });
+  }
+}
 
 export function createHttpApp(options: HttpServerOptions = {}) {
   const meta = getPackageMeta();
@@ -72,8 +109,31 @@ export function createHttpApp(options: HttpServerOptions = {}) {
     }
   };
 
+  // Auth → Shopify BYOK headers (ALS) → MCP handler.
+  // ALS must wrap the async handler; middleware `next()` alone loses context
+  // after the sync stack unwinds, so we bind config here and re-enter ALS.
   app.post(MCP_PATH, auth, (req, res) => {
-    void handleMcpPost(req, res);
+    try {
+      const config = shopifyConfigFromHeaders({
+        get: (name) => req.header(name) ?? undefined,
+      });
+      void runWithShopifyConfig(config, () => handleMcpPost(req, res));
+    } catch (err) {
+      if (err instanceof ShopifyError) {
+        res.status(400).json({
+          error:
+            err.code === "missing_shopify_headers"
+              ? "missing_shopify_credentials"
+              : err.code,
+          message: err.message,
+        });
+        return;
+      }
+      res.status(400).json({
+        error: "invalid_shopify_credentials",
+        message: "Could not parse Shopify credentials from headers",
+      });
+    }
   });
 
   // Stateless mode: no SSE stream / session teardown via GET/DELETE.
@@ -85,8 +145,8 @@ export function createHttpApp(options: HttpServerOptions = {}) {
     });
   };
 
-  app.get(MCP_PATH, auth, methodNotAllowed);
-  app.delete(MCP_PATH, auth, methodNotAllowed);
+  app.get(MCP_PATH, auth, requireShopifyHeaders, methodNotAllowed);
+  app.delete(MCP_PATH, auth, requireShopifyHeaders, methodNotAllowed);
 
   return { app, host, meta };
 }
@@ -104,6 +164,9 @@ export async function main(): Promise<void> {
         `${meta.name}@${meta.version} HTTP MCP listening on http://${host}:${port}${MCP_PATH}`,
       );
       console.error(`Health: GET /health (unauthenticated)`);
+      console.error(
+        "Shopify BYOK via headers: X-Shopify-Store-Domain + Client-Id/Secret (or Admin-Access-Token)",
+      );
       resolve();
     });
     server.on("error", reject);

@@ -4,7 +4,7 @@ This server is **read-only**: it reads inventory, orders, and products from a st
 
 **Local stdio (BYOK):** Credentials stay on your machine. Do not paste tokens or client secrets into issues, PRs, or chats.
 
-**Hosted HTTP (Railway portfolio demo):** Shopify credentials stay in server env only. Clients authenticate with `Authorization: Bearer <MCP_API_KEY>`. Missing/invalid Bearer → 401. Rotate `MCP_API_KEY` if exposed. This is **single-tenant / demo** — not Shopify OAuth and not multi-merchant. See [`docs/HOSTED.md`](docs/HOSTED.md).
+**Hosted HTTP (Railway):** Clients send `Authorization: Bearer <MCP_API_KEY>` (gateway) **plus** their own Shopify BYOK headers (`X-Shopify-Store-Domain`, client id/secret or admin token). Missing Bearer → 401; missing Shopify headers → 400. Railway should only store `MCP_API_KEY` — not users’ Shopify secrets. Hosted mode means client secrets reach your server over HTTPS; prefer local stdio for maximum privacy. See [`docs/HOSTED.md`](docs/HOSTED.md).
 
 **Caveat:** tool *results* (SKU titles, stock levels, notes) are sent to the model provider by your MCP client. Treat that channel as untrusted egress for store data.
 

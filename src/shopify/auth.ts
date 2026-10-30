@@ -7,11 +7,19 @@ type TokenCache = {
   expiresAtMs: number;
 };
 
-let cache: TokenCache | null = null;
+/** Per-store client-credentials cache (avoids cross-tenant token leaks). */
+const cacheByKey = new Map<string, TokenCache>();
+
+function tokenCacheKey(config: ShopifyConfig): string {
+  if (config.accessToken) {
+    return `static:${config.storeDomain}`;
+  }
+  return `cc:${config.storeDomain}:${config.clientId ?? ""}`;
+}
 
 /** Test helper — clear client-credentials cache between tests. */
 export function clearAccessTokenCache(): void {
-  cache = null;
+  cacheByKey.clear();
 }
 
 /**
@@ -34,10 +42,12 @@ export async function resolveAccessToken(
     );
   }
 
+  const key = tokenCacheKey(config);
   const now = Date.now();
+  const cached = cacheByKey.get(key);
   // Refresh 5 minutes early.
-  if (cache && cache.expiresAtMs - 5 * 60_000 > now) {
-    return cache.accessToken;
+  if (cached && cached.expiresAtMs - 5 * 60_000 > now) {
+    return cached.accessToken;
   }
 
   const url = `https://${config.storeDomain}/admin/oauth/access_token`;
@@ -82,9 +92,9 @@ export async function resolveAccessToken(
   }
 
   const expiresInSec = json.expires_in ?? 86_399;
-  cache = {
+  cacheByKey.set(key, {
     accessToken: json.access_token,
     expiresAtMs: now + expiresInSec * 1000,
-  };
+  });
   return json.access_token;
 }

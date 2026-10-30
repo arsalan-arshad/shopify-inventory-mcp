@@ -14,6 +14,7 @@ import {
   DEFAULT_SERVICE_LEVEL_Z,
 } from "./forecast/defaults.js";
 import { loadStoreSnapshot, type StoreSnapshot } from "./shopify/index.js";
+import { getRequestShopifyConfig } from "./shopify/request-context.js";
 import { getPackageMeta } from "./package-meta.js";
 import {
   handleExplainForecastInputs,
@@ -28,6 +29,12 @@ let cachedSnapshot: { loadedAt: number; snapshot: StoreSnapshot } | null =
 const SNAPSHOT_TTL_MS = 60_000;
 
 async function getSnapshot(): Promise<StoreSnapshot> {
+  // Hosted BYOK: per-request credentials — never reuse another tenant's cache.
+  const requestConfig = getRequestShopifyConfig();
+  if (requestConfig) {
+    return loadStoreSnapshot({ config: requestConfig });
+  }
+
   const now = Date.now();
   if (cachedSnapshot && now - cachedSnapshot.loadedAt < SNAPSHOT_TTL_MS) {
     return cachedSnapshot.snapshot;
