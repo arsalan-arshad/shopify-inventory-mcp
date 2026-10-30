@@ -73,7 +73,8 @@ Missing Shopify headers → **400**.
 2. **Remove** `MCP_API_KEY` and all `SHOPIFY_*` from Railway Variables (optional cleanup).
 3. Clients use the hosted JSON config above with **their** Shopify app credentials.
 
-Health: `GET https://<domain>/health` → `{ "ok": true, ... }`
+- Home (README-style): `GET https://<domain>/`
+- Health: `GET https://<domain>/health` → `{ "ok": true, ... }`
 
 ---
 
