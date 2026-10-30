@@ -1,6 +1,6 @@
 # Inventory MCP Server — Project Context (for Claude)
 
-_Snapshot: 2026-10-29 · **v0 shipped** — M1–M4 done; public repo https://github.com/arsalan-arshad/shopify-inventory-mcp · npm registry not required for v0 · next: live E2E + measure gate (ask before directory listing)._
+_Snapshot: 2026-10-30 · **v0 shipped** on GitHub; **hosted portfolio MVP in progress** (0.2.0 — Streamable HTTP + Bearer `MCP_API_KEY` on Railway; single-tenant demo store; no Shopify OAuth/multi-tenant yet). Public repo https://github.com/arsalan-arshad/shopify-inventory-mcp · npm registry not required · next after hosted: live E2E + measure gate (ask before directory listing)._
 _Contains NO secrets. Never paste `.env` values or tokens into chat or docs._
 
 ## 1. What this is
@@ -52,9 +52,10 @@ Repo name / branding: **`shopify-inventory-mcp`**. **Public GitHub repo allowed*
 - Directory listing requirements still open (ask before listing).
 
 ## 9. Punch list
-**Done:** Q1/Q2; D1–D4; M1–M3; S1–S3; M4 docs polish (README prompts + MCP snippets, LICENSE/SECURITY/CONTRIBUTING/.env.example/CI); public repo lock lifted.
-**Open / publish punch list:** push public `shopify-inventory-mcp`; live E2E with owner credentials; optional demo clip; **ask before** MCP directory listing; measure gate (M5).
-**Resolved:** D1–D4, Q1, Q2; priority after 04; gate confirmed; public GitHub allowed (2026-10-29).
+**Done:** Q1/Q2; D1–D4; M1–M3; S1–S3; M4 docs polish (README prompts + MCP snippets, LICENSE/SECURITY/CONTRIBUTING/.env.example/CI); public repo lock lifted; public GitHub ship.
+**In progress (2026-10-30):** **hosted portfolio MVP** — Railway HTTP Streamable MCP, Bearer `MCP_API_KEY`, Shopify creds server-side only, `docs/HOSTED.md`, Dockerfile/`railway.toml`, stdio BYOK kept. Owner: Railway domain for now; no OAuth/multi-tenant.
+**Open / publish punch list:** Railway deploy (owner env); live E2E with owner credentials; optional demo clip; **ask before** MCP directory listing; measure gate (M5).
+**Resolved:** D1–D4, Q1, Q2; priority after 04; gate confirmed; public GitHub allowed (2026-10-29); hosted auth = Bearer API key (2026-10-30).
 
 ## 10. Working agreements
 - Read-only; deterministic core; AI explains only; BYOK; no secrets in chat.
@@ -158,3 +159,19 @@ Owner override: finish v0 and **publish ASAP**; earlier “no repo yet” lock l
 - Publish target: **public GitHub** under `arsalan-arshad/shopify-inventory-mcp` (npm registry not required for v0).
 
 **Still optional / ask first:** demo clip; MCP directory listing; live store E2E; npm publish.
+
+## 14. Hosted portfolio MVP (2026-10-30)
+
+Owner lock: host on **Railway**, use Railway-generated domain, auth = **Bearer API key** (`MCP_API_KEY`).
+
+| Decision | Choice |
+|---|---|
+| Transport | Official SDK Streamable HTTP, **stateless** (`src/http-server.ts`) |
+| Auth | `Authorization: Bearer <MCP_API_KEY>` on `/mcp`; `GET /health` open |
+| Shopify | Server env only — `SHOPIFY_STORE_DOMAIN` + client ID/secret **or** static token; **single-tenant** demo |
+| Non-goals (still) | Shopify OAuth, multi-tenant, billing |
+| Local | Stdio BYOK (`npm start`) unchanged |
+| Version | package `0.2.0` (docs may say **0.2.0-hosted** until merge/deploy) |
+| Docs | `docs/HOSTED.md` + README hosted section |
+
+Supersedes earlier “hosted/OAuth out of scope for v0” for this **demo** slice only; full multi-tenant hosted tier remains later.

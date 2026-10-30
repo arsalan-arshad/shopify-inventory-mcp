@@ -14,6 +14,7 @@ import {
   DEFAULT_SERVICE_LEVEL_Z,
 } from "./forecast/defaults.js";
 import { loadStoreSnapshot, type StoreSnapshot } from "./shopify/index.js";
+import { getPackageMeta } from "./package-meta.js";
 import {
   handleExplainForecastInputs,
   handleGetReorderSuggestion,
@@ -37,9 +38,10 @@ async function getSnapshot(): Promise<StoreSnapshot> {
 }
 
 export function createInventoryMcpServer(): McpServer {
+  const meta = getPackageMeta();
   const server = new McpServer({
-    name: "shopify-inventory-mcp",
-    version: "0.0.0",
+    name: meta.name,
+    version: meta.version,
   });
 
   server.tool(

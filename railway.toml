@@ -1,0 +1,13 @@
+# Railway deploy config for the hosted HTTP MCP server.
+# Set secrets in the Railway dashboard (never commit them).
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "node dist/http-server.js"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
