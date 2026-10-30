@@ -1,123 +1,86 @@
-# Hosted MCP (Railway) — portfolio demo
+# Hosted MCP (Railway) — BYOK via Shopify headers
 
-**Status:** upcoming **0.2.0-hosted** (shipped on `main` once the PR merges).  
-**Scope:** single-tenant demo store. Shopify credentials live only in Railway env. Clients authenticate with a shared **Bearer API key** (`MCP_API_KEY`). There is **no** Shopify OAuth and **no** multi-merchant tenancy yet.
+**Hosted = infrastructure only.** The Railway app serves Streamable HTTP MCP.  
+**Each user brings their own Shopify credentials** in request headers.  
+There is **no** shared Bearer / `MCP_API_KEY` gate.
 
-Local **stdio + BYOK** (`npm start` / `dist/server.js`) is unchanged — keep using that when you want your own store credentials on your machine.
-
----
-
-## Auth model (locked)
-
-| Layer | What |
-|---|---|
-| Client → MCP HTTP | `Authorization: Bearer <MCP_API_KEY>` on `/mcp` (missing/invalid → **401**) |
-| MCP → Shopify | Server-side env only: `SHOPIFY_STORE_DOMAIN` + client credentials **or** static Admin token |
-| `/health` | Unauthenticated liveness for Railway |
-
-Generate a long random key (e.g. `openssl rand -hex 32`). Rotate by changing Railway `MCP_API_KEY` and updating client configs. Never commit the key or log `Authorization` values.
-
-This is a **portfolio / demo** gate, not per-merchant OAuth. Do not point arbitrary merchants at this URL until multi-tenant auth exists.
+Local **stdio + env BYOK** (`npm start`) is unchanged.
 
 ---
 
-## Required Railway env vars
+## Two ways to run
+
+### 1) Local (stdio)
+
+```json
+{
+  "mcpServers": {
+    "shopify-inventory": {
+      "command": "node",
+      "args": ["/absolute/path/to/shopify-inventory-mcp/dist/server.js"],
+      "env": {
+        "SHOPIFY_STORE_DOMAIN": "your-store.myshopify.com",
+        "SHOPIFY_CLIENT_ID": "your-client-id",
+        "SHOPIFY_CLIENT_SECRET": "your-client-secret"
+      }
+    }
+  }
+}
+```
+
+### 2) Hosted (URL + Shopify headers)
+
+```json
+{
+  "mcpServers": {
+    "shopify-inventory": {
+      "url": "https://shopify-inventory-mcp-production-e5fd.up.railway.app/mcp",
+      "headers": {
+        "X-Shopify-Store-Domain": "your-store.myshopify.com",
+        "X-Shopify-Client-Id": "your-client-id",
+        "X-Shopify-Client-Secret": "your-client-secret"
+      }
+    }
+  }
+}
+```
+
+Optional instead of client id/secret:
+
+```json
+"X-Shopify-Admin-Access-Token": "shpat_..."
+```
+
+Optional: `X-Shopify-Lead-Time-Days` (default 21).
+
+Missing Shopify headers → **400**.
+
+---
+
+## Railway env vars
 
 | Variable | Required | Notes |
 |---|---|---|
-| `MCP_API_KEY` | **yes** | Shared secret; clients send as Bearer token |
-| `SHOPIFY_STORE_DOMAIN` | **yes** | e.g. `your-store.myshopify.com` |
-| `SHOPIFY_CLIENT_ID` + `SHOPIFY_CLIENT_SECRET` | one of | Dev Dashboard app (recommended) |
-| `SHOPIFY_ADMIN_ACCESS_TOKEN` | one of | Legacy static Admin token instead of client ID/secret |
-| `PORT` | set by Railway | Server listens on `HOST` (default `0.0.0.0`) + `PORT` |
-| `LEAD_TIME_DAYS` / `HISTORY_DAYS` / … | optional | Same overrides as local `.env.example` |
+| `PORT` | set by Railway | Listen port |
+| `MCP_API_KEY` | **no** | Not used |
+| `SHOPIFY_*` | **no** | Users send credentials in headers — delete any old Shopify vars from Railway |
 
 ---
 
-## Deploy on Railway
+## Deploy / upgrade checklist
 
-1. Push this repo (or connect [arsalan-arshad/shopify-inventory-mcp](https://github.com/arsalan-arshad/shopify-inventory-mcp)) to Railway.
-2. New project → **Deploy from GitHub** → select the repo / branch with HTTP support.
-3. Railway should pick up `Dockerfile` + `railway.toml` (health check `GET /health`).
-4. In **Variables**, set `MCP_API_KEY`, `SHOPIFY_STORE_DOMAIN`, and either client credentials or `SHOPIFY_ADMIN_ACCESS_TOKEN`.
-5. Deploy. Copy the public HTTPS domain Railway assigns (e.g. `https://shopify-inventory-mcp-production.up.railway.app`).
-6. MCP endpoint: `https://<railway-domain>/mcp`  
-   Health: `https://<railway-domain>/health` → `{ "ok": true, "service": "shopify-inventory-mcp", "version": "…" }`
+1. Deploy this version.
+2. **Remove** `MCP_API_KEY` and all `SHOPIFY_*` from Railway Variables (optional cleanup).
+3. Clients use the hosted JSON config above with **their** Shopify app credentials.
 
-### Local container smoke-test (optional)
-
-```bash
-docker build -t shopify-inventory-mcp .
-docker run --rm -p 3000:3000 \
-  -e MCP_API_KEY=dev-only-not-for-prod \
-  -e SHOPIFY_STORE_DOMAIN=your-store.myshopify.com \
-  -e SHOPIFY_CLIENT_ID=... \
-  -e SHOPIFY_CLIENT_SECRET=... \
-  shopify-inventory-mcp
-curl -s http://127.0.0.1:3000/health
-```
-
-Without Docker: `MCP_API_KEY=... npm run build && npm run start:http`
+Health: `GET https://<domain>/health` → `{ "ok": true, ... }`
 
 ---
 
-## Remote MCP client config
+## Security
 
-Replace the URL and keep the key out of git (env interpolation preferred).
-
-### Cursor (`~/.cursor/mcp.json` or project `.cursor/mcp.json`)
-
-```json
-{
-  "mcpServers": {
-    "shopify-inventory-hosted": {
-      "url": "https://YOUR-APP.up.railway.app/mcp",
-      "headers": {
-        "Authorization": "Bearer ${env:MCP_API_KEY}"
-      }
-    }
-  }
-}
-```
-
-Set `MCP_API_KEY` in your shell environment to the same value as Railway.
-
-### Claude / other Streamable HTTP clients
-
-Same shape when the client supports remote URL + headers:
-
-```json
-{
-  "mcpServers": {
-    "shopify-inventory-hosted": {
-      "url": "https://YOUR-APP.up.railway.app/mcp",
-      "headers": {
-        "Authorization": "Bearer YOUR_MCP_API_KEY"
-      }
-    }
-  }
-}
-```
-
-Prefer env references over pasting the raw key into a file you might commit.
-
----
-
-## Security notes
-
-- **Demo / single store only.** Shopify tokens never leave the Railway service; clients never see them.
-- **Rotate `MCP_API_KEY`** if it leaks; treat it like a password shared with anyone who can call your tools.
-- Tool **results** (SKU titles, stock, notes) still flow to the model provider via the MCP client — same egress caveat as local mode.
-- No Shopify OAuth, billing, or multi-store routing in this release.
-- Do not advertise this URL as a public multi-merchant SaaS until that work lands.
-
----
-
-## Transport details
-
-- Official `@modelcontextprotocol/sdk` **Streamable HTTP** transport in **stateless** mode (`sessionIdGenerator: undefined`).
-- `POST /mcp` — authenticated MCP JSON-RPC.
-- `GET` / `DELETE /mcp` — authenticated, currently **405** (stateless; no SSE session).
-- `GET /health` — open.
-
-Stdio entry remains `npm start` → `node dist/server.js`.
+- Anyone who knows the public URL can hit `/mcp`; useful work still needs valid Shopify credentials in headers.
+- Hosted mode sends Shopify client secrets to *your* server over HTTPS — prefer local stdio for maximum privacy.
+- Never log `X-Shopify-*` secret headers.
+- Tool results still go to the model provider via the MCP client.
+- Not affiliated with Shopify.

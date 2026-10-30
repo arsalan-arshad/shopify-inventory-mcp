@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Hosted MCP entry — Streamable HTTP (stateless) + Bearer API key.
- * Shopify credentials stay server-side (single-tenant portfolio demo).
+ * Hosted MCP entry — Streamable HTTP (stateless).
+ * Users bring their own Shopify credentials via request headers (BYOK).
+ * No shared Bearer/API key — Shopify headers are the credential.
  * Local stdio BYOK continues via `src/server.ts` / `npm start`.
  */
 
@@ -10,8 +11,10 @@ import { pathToFileURL } from "node:url";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import type { Request, Response } from "express";
-import { AuthConfigError, loadMcpApiKey, requireBearerApiKey } from "./http/auth.js";
+import { shopifyConfigFromHeaders } from "./http/shopify-headers.js";
 import { getPackageMeta } from "./package-meta.js";
+import { ShopifyError } from "./shopify/errors.js";
+import { runWithShopifyConfig } from "./shopify/request-context.js";
 import { createInventoryMcpServer } from "./server.js";
 
 const MCP_PATH = "/mcp";
@@ -19,14 +22,29 @@ const MCP_PATH = "/mcp";
 export type HttpServerOptions = {
   port?: number;
   host?: string;
-  apiKey?: string;
   /** Injected for tests; defaults to createInventoryMcpServer. */
   createServer?: typeof createInventoryMcpServer;
 };
 
+function sendShopifyHeaderError(res: Response, err: unknown): void {
+  if (err instanceof ShopifyError) {
+    res.status(400).json({
+      error:
+        err.code === "missing_shopify_headers"
+          ? "missing_shopify_credentials"
+          : err.code,
+      message: err.message,
+    });
+    return;
+  }
+  res.status(400).json({
+    error: "invalid_shopify_credentials",
+    message: "Could not parse Shopify credentials from headers",
+  });
+}
+
 export function createHttpApp(options: HttpServerOptions = {}) {
   const meta = getPackageMeta();
-  const apiKey = options.apiKey ?? loadMcpApiKey();
   const createServer = options.createServer ?? createInventoryMcpServer;
 
   // Bind all interfaces on Railway; no Host allow-list (TLS terminated at edge).
@@ -41,8 +59,6 @@ export function createHttpApp(options: HttpServerOptions = {}) {
     });
   });
 
-  const auth = requireBearerApiKey(apiKey);
-
   const handleMcpPost = async (req: Request, res: Response): Promise<void> => {
     const server = createServer();
     const transport = new StreamableHTTPServerTransport({
@@ -52,7 +68,7 @@ export function createHttpApp(options: HttpServerOptions = {}) {
       await server.connect(transport);
       await transport.handleRequest(req, res, req.body);
     } catch (err) {
-      // Never include credentials or Authorization material.
+      // Never include credentials.
       console.error(
         "MCP request failed:",
         err instanceof Error ? err.message : "unknown error",
@@ -72,8 +88,16 @@ export function createHttpApp(options: HttpServerOptions = {}) {
     }
   };
 
-  app.post(MCP_PATH, auth, (req, res) => {
-    void handleMcpPost(req, res);
+  // Shopify BYOK headers (ALS) → MCP handler.
+  app.post(MCP_PATH, (req, res) => {
+    try {
+      const config = shopifyConfigFromHeaders({
+        get: (name) => req.header(name) ?? undefined,
+      });
+      void runWithShopifyConfig(config, () => handleMcpPost(req, res));
+    } catch (err) {
+      sendShopifyHeaderError(res, err);
+    }
   });
 
   // Stateless mode: no SSE stream / session teardown via GET/DELETE.
@@ -85,8 +109,8 @@ export function createHttpApp(options: HttpServerOptions = {}) {
     });
   };
 
-  app.get(MCP_PATH, auth, methodNotAllowed);
-  app.delete(MCP_PATH, auth, methodNotAllowed);
+  app.get(MCP_PATH, methodNotAllowed);
+  app.delete(MCP_PATH, methodNotAllowed);
 
   return { app, host, meta };
 }
@@ -103,7 +127,10 @@ export async function main(): Promise<void> {
       console.error(
         `${meta.name}@${meta.version} HTTP MCP listening on http://${host}:${port}${MCP_PATH}`,
       );
-      console.error(`Health: GET /health (unauthenticated)`);
+      console.error(`Health: GET /health`);
+      console.error(
+        "Shopify BYOK via headers: X-Shopify-Store-Domain + Client-Id/Secret (or Admin-Access-Token)",
+      );
       resolve();
     });
     server.on("error", reject);
@@ -116,11 +143,7 @@ const entryHref = process.argv[1]
 
 if (import.meta.url === entryHref) {
   main().catch((err) => {
-    const message =
-      err instanceof AuthConfigError || err instanceof Error
-        ? err.message
-        : String(err);
-    console.error(message);
+    console.error(err instanceof Error ? err.message : String(err));
     process.exit(1);
   });
 }

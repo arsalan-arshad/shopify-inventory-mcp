@@ -1,12 +1,12 @@
 # shopify-inventory-mcp — Deterministic Inventory Forecasts for Any AI Assistant
 
-> **Open-Source (MIT)** | Local stdio MCP (BYOK) · Hosted HTTP (Bearer) | Shopify Admin API | Not affiliated with Shopify
+> **Open-Source (MIT)** | Local stdio BYOK · Hosted HTTP (your Shopify headers) | Not affiliated with Shopify
 
 [![CI](https://github.com/arsalan-arshad/shopify-inventory-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/arsalan-arshad/shopify-inventory-mcp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node >=20](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](package.json)
 
-> **Status:** **0.2.0** — deterministic forecast math + Shopify read layer + four MCP tools over **stdio (BYOK)** or **Streamable HTTP** (Bearer API key; Railway-friendly). Hosted mode is a **single-tenant portfolio demo** (no Shopify OAuth / multi-store yet). Numbers come from pure functions with fixture tests; the model only explains them.
+> **Status:** **0.2.2** — four MCP tools over **local stdio (env BYOK)** or **hosted Streamable HTTP**. Hosted mode is **infrastructure only**: each user sends their own Shopify credentials in headers (no shared Bearer key).
 
 ---
 
@@ -14,9 +14,11 @@
 
 Merchants ask AI assistants “what will I run out of?” Assistants can read inventory, but guessed reorder numbers are dangerous. This **read-only MCP server** computes weighted moving average demand, days of cover, stockout date, and reorder point from **your** Shopify data and returns structured JSON the model can explain — not invent.
 
-**Why BYOK (local):** you run it locally with your own credentials. The token stays on your machine; **tool results are still sent to the model provider by your MCP client**, so treat product titles/notes as leaving via that channel.
+**Two ways:**
+1. **Local** — run the server on your machine; Shopify creds in `env` (maximum privacy).
+2. **Hosted** — use the public Railway URL; send your Shopify headers only (`X-Shopify-Store-Domain`, client id/secret). See [`docs/HOSTED.md`](docs/HOSTED.md).
 
-**Hosted demo:** same tools over HTTPS Streamable HTTP; Shopify creds stay on the server; clients send `Authorization: Bearer <MCP_API_KEY>`. See [`docs/HOSTED.md`](docs/HOSTED.md).
+**Tool results** are still sent to the model provider by your MCP client either way.
 
 Official Shopify MCP (UCP) covers storefront/cart/checkout — **not** Admin inventory forecasting. That’s the gap this fills.
 
@@ -144,22 +146,24 @@ Edit Claude Desktop’s MCP config (macOS: `~/Library/Application Support/Claude
 
 Restart Cursor / Claude Desktop after saving.
 
-### Remote / hosted (Streamable HTTP)
-
-After deploying (see [`docs/HOSTED.md`](docs/HOSTED.md)), point the client at `/mcp` with a Bearer header matching Railway `MCP_API_KEY`:
+### Remote / hosted (Streamable HTTP + your Shopify headers)
 
 ```json
 {
   "mcpServers": {
-    "shopify-inventory-hosted": {
-      "url": "https://YOUR-APP.up.railway.app/mcp",
+    "shopify-inventory": {
+      "url": "https://shopify-inventory-mcp-production-e5fd.up.railway.app/mcp",
       "headers": {
-        "Authorization": "Bearer ${env:MCP_API_KEY}"
+        "X-Shopify-Store-Domain": "your-store.myshopify.com",
+        "X-Shopify-Client-Id": "your-client-id",
+        "X-Shopify-Client-Secret": "your-client-secret"
       }
     }
   }
 }
 ```
+
+Use **your** Dev Dashboard app credentials. No shared API key. Full notes: [`docs/HOSTED.md`](docs/HOSTED.md).
 
 ---
 
@@ -211,18 +215,17 @@ flowchart LR
 
 ## 10. Hosted deploy (Railway)
 
-Portfolio / single-tenant demo — **not** multi-merchant OAuth. Full steps, env list, and security notes: **[`docs/HOSTED.md`](docs/HOSTED.md)**.
-
-Quick path: connect the GitHub repo on Railway → set `MCP_API_KEY`, `SHOPIFY_STORE_DOMAIN`, and Shopify client credentials (or static token) → deploy with included `Dockerfile` / `railway.toml` → use `https://<domain>/mcp` plus Bearer header in the client.
+Host the MCP process only. Users pass Shopify creds in headers. No `MCP_API_KEY` / no Shopify secrets required on Railway. Details: **[`docs/HOSTED.md`](docs/HOSTED.md)**.
 
 ---
 
 ## 11. Roadmap
 
 - [x] **v0:** four tools, local stdio, store-wide lead time, docs, public GitHub repo
-- [x] **0.2.0-hosted:** Streamable HTTP + Bearer API key + Railway Dockerfile (single-tenant demo)
+- [x] **0.2.0-hosted:** Streamable HTTP + Railway Dockerfile
+- [x] **0.2.1 / 0.2.2:** hosted BYOK via `X-Shopify-*` headers (no Bearer gate)
 - [ ] **v1:** per-SKU config, CSV export, Reorder Brain tools
-- [ ] **Later:** multi-tenant OAuth / billing, directory listing, Salesforce pipeline, bulk ops / `read_all_orders`
+- [ ] **Later:** OAuth accounts / billing, directory listing, Salesforce pipeline, bulk ops / `read_all_orders`
 
 ---
 
