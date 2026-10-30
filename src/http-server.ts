@@ -11,6 +11,7 @@ import { pathToFileURL } from "node:url";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import type { Request, Response } from "express";
+import { renderHomePage } from "./http/home-page.js";
 import { shopifyConfigFromHeaders } from "./http/shopify-headers.js";
 import { getPackageMeta } from "./package-meta.js";
 import { ShopifyError } from "./shopify/errors.js";
@@ -50,6 +51,16 @@ export function createHttpApp(options: HttpServerOptions = {}) {
   // Bind all interfaces on Railway; no Host allow-list (TLS terminated at edge).
   const host = options.host ?? process.env.HOST ?? "0.0.0.0";
   const app = createMcpExpressApp({ host });
+
+  app.get("/", (req: Request, res: Response) => {
+    const proto = String(req.headers["x-forwarded-proto"] ?? req.protocol);
+    const hostHeader = String(req.headers["x-forwarded-host"] ?? req.get("host") ?? "");
+    const origin = hostHeader ? `${proto}://${hostHeader}` : undefined;
+    res
+      .status(200)
+      .type("html")
+      .send(renderHomePage(meta, origin));
+  });
 
   app.get("/health", (_req: Request, res: Response) => {
     res.status(200).json({

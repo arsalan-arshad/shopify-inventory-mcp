@@ -1,6 +1,6 @@
 {
   "name": "shopify-inventory-mcp",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "MCP server: deterministic inventory forecasting tools over a Shopify store — local stdio BYOK or hosted HTTP with per-user Shopify headers. Not affiliated with Shopify.",
   "license": "MIT",
   "author": "Arsalan Arshad <arsalanarshad.dev@gmail.com>",

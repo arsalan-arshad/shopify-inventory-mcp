@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node >=20](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](package.json)
 
-> **Status:** **0.2.2** — four MCP tools over **local stdio (env BYOK)** or **hosted Streamable HTTP**. Hosted mode is **infrastructure only**: each user sends their own Shopify credentials in headers (no shared Bearer key).
+> **Status:** **0.2.3** — four MCP tools over **local stdio (env BYOK)** or **hosted Streamable HTTP**. Hosted `/` serves a README-style page; `/mcp` is the tool endpoint. Users send their own Shopify credentials in headers (no shared Bearer key).
 
 ---
 
