@@ -1,12 +1,12 @@
 # shopify-inventory-mcp — Deterministic Inventory Forecasts for Any AI Assistant
 
-> **Open-Source (MIT)** | Local stdio BYOK · Hosted HTTP (gateway key + your Shopify headers) | Not affiliated with Shopify
+> **Open-Source (MIT)** | Local stdio BYOK · Hosted HTTP (your Shopify headers) | Not affiliated with Shopify
 
 [![CI](https://github.com/arsalan-arshad/shopify-inventory-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/arsalan-arshad/shopify-inventory-mcp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node >=20](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](package.json)
 
-> **Status:** **0.2.1** — four MCP tools over **local stdio (env BYOK)** or **hosted Streamable HTTP**. Hosted mode is **infrastructure only**: Railway keeps `MCP_API_KEY`; **each user sends their own Shopify credentials in headers**.
+> **Status:** **0.2.2** — four MCP tools over **local stdio (env BYOK)** or **hosted Streamable HTTP**. Hosted mode is **infrastructure only**: each user sends their own Shopify credentials in headers (no shared Bearer key).
 
 ---
 
@@ -16,7 +16,7 @@ Merchants ask AI assistants “what will I run out of?” Assistants can read in
 
 **Two ways:**
 1. **Local** — run the server on your machine; Shopify creds in `env` (maximum privacy).
-2. **Hosted** — use the public Railway URL; send `Authorization: Bearer <MCP_API_KEY>` **plus** your Shopify headers (`X-Shopify-Store-Domain`, client id/secret). See [`docs/HOSTED.md`](docs/HOSTED.md).
+2. **Hosted** — use the public Railway URL; send your Shopify headers only (`X-Shopify-Store-Domain`, client id/secret). See [`docs/HOSTED.md`](docs/HOSTED.md).
 
 **Tool results** are still sent to the model provider by your MCP client either way.
 
@@ -154,7 +154,6 @@ Restart Cursor / Claude Desktop after saving.
     "shopify-inventory": {
       "url": "https://shopify-inventory-mcp-production-e5fd.up.railway.app/mcp",
       "headers": {
-        "Authorization": "Bearer YOUR_MCP_API_KEY",
         "X-Shopify-Store-Domain": "your-store.myshopify.com",
         "X-Shopify-Client-Id": "your-client-id",
         "X-Shopify-Client-Secret": "your-client-secret"
@@ -164,7 +163,7 @@ Restart Cursor / Claude Desktop after saving.
 }
 ```
 
-Ask the host for `MCP_API_KEY`. Use **your** Dev Dashboard app credentials for the `X-Shopify-*` headers. Full notes: [`docs/HOSTED.md`](docs/HOSTED.md).
+Use **your** Dev Dashboard app credentials. No shared API key. Full notes: [`docs/HOSTED.md`](docs/HOSTED.md).
 
 ---
 
@@ -216,15 +215,15 @@ flowchart LR
 
 ## 10. Hosted deploy (Railway)
 
-Host the MCP process only. Set **`MCP_API_KEY`** on Railway; users pass Shopify creds in headers. Do **not** put merchants’ Shopify secrets in Railway env for shared BYOK. Details: **[`docs/HOSTED.md`](docs/HOSTED.md)**.
+Host the MCP process only. Users pass Shopify creds in headers. No `MCP_API_KEY` / no Shopify secrets required on Railway. Details: **[`docs/HOSTED.md`](docs/HOSTED.md)**.
 
 ---
 
 ## 11. Roadmap
 
 - [x] **v0:** four tools, local stdio, store-wide lead time, docs, public GitHub repo
-- [x] **0.2.0-hosted:** Streamable HTTP + Bearer gateway key + Railway Dockerfile
-- [x] **0.2.1:** hosted BYOK via `X-Shopify-*` headers (per-user store credentials)
+- [x] **0.2.0-hosted:** Streamable HTTP + Railway Dockerfile
+- [x] **0.2.1 / 0.2.2:** hosted BYOK via `X-Shopify-*` headers (no Bearer gate)
 - [ ] **v1:** per-SKU config, CSV export, Reorder Brain tools
 - [ ] **Later:** OAuth accounts / billing, directory listing, Salesforce pipeline, bulk ops / `read_all_orders`
 

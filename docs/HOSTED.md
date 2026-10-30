@@ -1,8 +1,8 @@
-# Hosted MCP (Railway) — BYOK via headers
+# Hosted MCP (Railway) — BYOK via Shopify headers
 
 **Hosted = infrastructure only.** The Railway app serves Streamable HTTP MCP.  
 **Each user brings their own Shopify credentials** in request headers.  
-Railway only needs a shared gateway key: **`MCP_API_KEY`**.
+There is **no** shared Bearer / `MCP_API_KEY` gate.
 
 Local **stdio + env BYOK** (`npm start`) is unchanged.
 
@@ -28,7 +28,7 @@ Local **stdio + env BYOK** (`npm start`) is unchanged.
 }
 ```
 
-### 2) Hosted (URL + headers)
+### 2) Hosted (URL + Shopify headers)
 
 ```json
 {
@@ -36,7 +36,6 @@ Local **stdio + env BYOK** (`npm start`) is unchanged.
     "shopify-inventory": {
       "url": "https://shopify-inventory-mcp-production-e5fd.up.railway.app/mcp",
       "headers": {
-        "Authorization": "Bearer YOUR_MCP_API_KEY",
         "X-Shopify-Store-Domain": "your-store.myshopify.com",
         "X-Shopify-Client-Id": "your-client-id",
         "X-Shopify-Client-Secret": "your-client-secret"
@@ -54,20 +53,7 @@ Optional instead of client id/secret:
 
 Optional: `X-Shopify-Lead-Time-Days` (default 21).
 
----
-
-## Auth model
-
-| Layer | What |
-|---|---|
-| Client → MCP HTTP | `Authorization: Bearer <MCP_API_KEY>` (missing/invalid → **401**) |
-| Client → MCP HTTP | Shopify BYOK headers (missing → **400**) |
-| MCP → Shopify | Uses **that request’s** credentials only |
-| `/health` | Unauthenticated |
-
-Generate the gateway key once (`openssl rand -hex 32`). Put it on Railway as `MCP_API_KEY`. Share it with people you trust (or rotate often).
-
-**Trust note:** Hosted mode sends Shopify client secrets to *your* server over HTTPS. For maximum privacy, use local stdio instead.
+Missing Shopify headers → **400**.
 
 ---
 
@@ -75,21 +61,17 @@ Generate the gateway key once (`openssl rand -hex 32`). Put it on Railway as `MC
 
 | Variable | Required | Notes |
 |---|---|---|
-| `MCP_API_KEY` | **yes** | Gateway Bearer secret |
 | `PORT` | set by Railway | Listen port |
-| `SHOPIFY_*` | **no** | Do **not** keep store secrets on Railway for multi-user BYOK — delete them after upgrading |
-
-Optional server defaults (only if you still want a demo fallback later): none required for BYOK headers mode.
+| `MCP_API_KEY` | **no** | Not used |
+| `SHOPIFY_*` | **no** | Users send credentials in headers — delete any old Shopify vars from Railway |
 
 ---
 
 ## Deploy / upgrade checklist
 
-1. Deploy this version (Dockerfile already set).
-2. Ensure `MCP_API_KEY` is set.
-3. **Remove** `SHOPIFY_STORE_DOMAIN`, `SHOPIFY_CLIENT_ID`, `SHOPIFY_CLIENT_SECRET`, `SHOPIFY_ADMIN_ACCESS_TOKEN` from Railway Variables (users send their own).
-4. Redeploy if needed.
-5. Clients use the hosted JSON config above with **their** Shopify app credentials.
+1. Deploy this version.
+2. **Remove** `MCP_API_KEY` and all `SHOPIFY_*` from Railway Variables (optional cleanup).
+3. Clients use the hosted JSON config above with **their** Shopify app credentials.
 
 Health: `GET https://<domain>/health` → `{ "ok": true, ... }`
 
@@ -97,7 +79,8 @@ Health: `GET https://<domain>/health` → `{ "ok": true, ... }`
 
 ## Security
 
-- Rotate `MCP_API_KEY` if it leaks.
-- Never log Authorization or X-Shopify-* secret headers.
+- Anyone who knows the public URL can hit `/mcp`; useful work still needs valid Shopify credentials in headers.
+- Hosted mode sends Shopify client secrets to *your* server over HTTPS — prefer local stdio for maximum privacy.
+- Never log `X-Shopify-*` secret headers.
 - Tool results still go to the model provider via the MCP client.
-- Not affiliated with Shopify. Not a multi-tenant SaaS with accounts/billing — just a shared host + per-request BYOK.
+- Not affiliated with Shopify.
