@@ -152,7 +152,7 @@ Restart Cursor / Claude Desktop after saving.
 {
   "mcpServers": {
     "shopify-inventory": {
-      "url": "https://shopify-inventory-mcp-production-e5fd.up.railway.app/mcp",
+      "url": "https://shopify-mcp.arsalandev.studio",
       "headers": {
         "X-Shopify-Store-Domain": "your-store.myshopify.com",
         "X-Shopify-Client-Id": "your-client-id",
